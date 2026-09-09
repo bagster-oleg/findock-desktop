@@ -1,0 +1,80 @@
+# Релиз FinDock для компьютера. Тег `vX.Y.Z` → сборка Mac (универсальная: Intel + Apple Silicon)
+# и Windows (NSIS, установка без прав администратора) → GitHub Release.
+#
+# В релизе два вида файлов:
+#  - версионные от tauri-action (FinDock_1.0.0_universal.dmg, FinDock_1.0.0_x64-setup.exe,
+#    FinDock.app.tar.gz + .sig, latest.json) — их читает автообновление внутри приложения;
+#  - копии со стабильными именами FinDock.dmg и FinDock-setup.exe — на них ведут постоянные ссылки
+#    cp.findock.ru/download/mac и /download/windows через .../releases/latest/download/<имя>.
+#
+# Секреты репозитория: TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD, пустой) — подпись обновлений.
+# Без подписи кода Apple/Microsoft: приложение ad-hoc (Mac) и без сертификата (Windows) —
+# первый запуск скачанного файла требует «Открыть всё равно» / «Выполнить в любом случае».
+# Обновления ставятся изнутри приложения и этого шага не требуют.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            stable: FinDock.dmg
+            glob: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          - platform: windows-latest
+            args: ''
+            stable: FinDock-setup.exe
+            glob: src-tauri/target/release/bundle/nsis/*-setup.exe
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Сборка и публикация релиза
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: FinDock ${{ github.ref_name }}
+          releaseBody: |
+            Скачать: FinDock.dmg (Mac), FinDock-setup.exe (Windows).
+            Установленные приложения обновятся сами.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: ${{ matrix.args }}
+
+      - name: Копия со стабильным именем (${{ matrix.stable }})
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          src="$(ls ${{ matrix.glob }} | head -1)"
+          cp "$src" "${{ matrix.stable }}"
+          gh release upload "${{ github.ref_name }}" "${{ matrix.stable }}" --clobber

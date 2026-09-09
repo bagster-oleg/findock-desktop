@@ -1,0 +1,16 @@
+{
+  "name": "findock-desktop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "FinDock для компьютера: тонкая оболочка над cp.findock.ru",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:mac": "tauri build --target universal-apple-darwin",
+    "icons": "tauri icon assets/app-icon.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  }
+}
