@@ -12,12 +12,18 @@ Windows). Веб-фронта здесь нет — `ui/index.html` пустая
 - Открывает кабинет (`APP_URL`, переопределяется `FINDOCK_URL=https://dev.findock.ru/` при сборке).
 - Скачивание → «Загрузки» пользователя, имя от сайта, при совпадении `(1)`, `(2)`…; готовый файл
   показывается в Finder/Проводнике.
-- В окне остаются `*.findock.ru` и страницы входа провайдеров подключений (`*.google.com`,
-  `*.yandex.ru`). Остальные адреса и `target=_blank` — в системный браузер.
+- В главном окне остаются `*.findock.ru`, страницы входа провайдеров подключений
+  (`accounts.google.com`, `oauth.yandex.ru`, `passport.yandex.*`) и их ресурсы (капчи, статика).
+  Ссылки `target=_blank` на наш домен — отдельное окно приложения (та же сессия), на чужой —
+  системный браузер.
 - Один экземпляр: повторный запуск поднимает открытое окно.
-- При старте — проверка `latest.json` в последнем релизе, тихая загрузка и установка обновления.
+- При старте — проверка `latest.json` в последнем релизе и тихая загрузка обновления. Потом
+  вопрос «Перезапустить сейчас? / Позже» — окно никогда не закрывается само посреди работы.
+  «Позже» и провал установки запоминаются (`updater.json` в данных приложения) — не чаще раза
+  в сутки. Журнал: `updater.log` в папке логов приложения (`~/Library/Logs/ru.findock.desktop`
+  на Mac, `%LOCALAPPDATA%\ru.findock.desktop\logs` на Windows).
   Windows: установщик в passive-режиме сам перезапускает приложение. Mac: подмена бандла и
-  `restart()`.
+  `restart()`; без подписи Apple macOS может спросить разрешение или пароль — см. Ф4 в задаче.
 
 ## Сборка
 
@@ -35,8 +41,10 @@ FINDOCK_URL=https://dev.findock.ru/ npm run build:mac   # сборка на dev-
 ## Релиз
 
 Тег `vX.Y.Z` (версия в `src-tauri/Cargo.toml` и `package.json` должна совпадать) запускает
-[release.yml](.github/workflows/release.yml): Mac + Windows → GitHub Release с версионными
-файлами, `latest.json` для автообновления и копиями со стабильными именами:
+[release.yml](.github/workflows/release.yml): Mac + Windows → черновик GitHub Release с версионными
+файлами, `latest.json` для автообновления и копиями со стабильными именами; когда собрались обе
+платформы, джоба `publish` снимает черновик. Ручной запуск workflow — проверочная сборка в
+артефакты без релиза. Ссылки:
 
 ```
 https://github.com/bagster-oleg/findock-desktop/releases/latest/download/FinDock.dmg
@@ -48,8 +56,9 @@ https://github.com/bagster-oleg/findock-desktop/releases/latest/download/FinDock
 ### Подпись обновлений
 
 Обновления подписаны ключом minisign (встроен в Tauri). Пара создаётся один раз
-`scripts/updater-keypair.sh`: приватная часть — `~/.tauri/findock-desktop.key` и секрет репозитория
-`TAURI_SIGNING_PRIVATE_KEY` (`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — пустой), публичная —
+`scripts/updater-keypair.sh`: приватная часть — `~/.tauri/findock-desktop.key` на машине разработчика,
+бэкап у владельца в менеджере паролей (сделан 09.09.2026), в CI — секрет репозитория
+`TAURI_SIGNING_PRIVATE_KEY` (кладёт `scripts/updater-secret.sh`; `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — пустой), публичная —
 `plugins.updater.pubkey` в `src-tauri/tauri.conf.json`. **Потеря приватной части = установленные
 приложения перестанут принимать обновления**, бэкап обязателен.
 

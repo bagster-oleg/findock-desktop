@@ -67,7 +67,9 @@ jobs:
           releaseBody: |
             Скачать: FinDock.dmg (Mac), FinDock-setup.exe (Windows).
             Установленные приложения обновятся сами.
-          releaseDraft: false
+          # Черновик, пока не соберутся обе платформы: иначе упавшая Mac-джоба оставила бы
+          # «последний релиз» без FinDock.dmg. Публикует джоба publish ниже.
+          releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
@@ -90,3 +92,15 @@ jobs:
           src="$(ls ${{ matrix.glob }} | head -1)"
           cp "$src" "${{ matrix.stable }}"
           gh release upload "${{ github.ref_name }}" "${{ matrix.stable }}" --clobber
+
+  # Обе платформы собрались — снимаем черновик. Упала хоть одна — релиз остаётся черновиком,
+  # ссылки «последний релиз» и автообновление продолжают смотреть на предыдущую версию.
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Опубликовать релиз ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false
