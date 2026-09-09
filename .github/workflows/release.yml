@@ -16,6 +16,8 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Проверочная сборка без релиза: установщики уходят в артефакты запуска (Actions → run → Artifacts).
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -59,7 +61,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
+          # Без тега (ручной запуск) tauri-action только собирает, релиз не создаёт.
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: FinDock ${{ github.ref_name }}
           releaseBody: |
             Скачать: FinDock.dmg (Mac), FinDock-setup.exe (Windows).
@@ -69,7 +72,16 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
+      - name: Артефакты проверочной сборки
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.stable }}
+          path: ${{ matrix.glob }}
+          if-no-files-found: error
+
       - name: Копия со стабильным именем (${{ matrix.stable }})
+        if: github.ref_type == 'tag'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
