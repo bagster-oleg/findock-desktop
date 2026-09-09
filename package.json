@@ -1,7 +1,7 @@
 {
   "name": "findock-desktop",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FinDock для компьютера: тонкая оболочка над cp.findock.ru",
   "scripts": {
     "tauri": "tauri",
