@@ -111,11 +111,16 @@ fn open_main_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Наш ли это хост (или его поддомен).
+/// Остаётся ли адрес внутри окна: хост кабинета (в т.ч. localhost/dev при сборке с `FINDOCK_URL`),
+/// наши домены и страницы входа провайдеров.
 fn stays_in_app(url: &Url) -> bool {
     let Some(host) = url.host_str() else {
         return true; // about:blank и прочее служебное
     };
+    let app_host = Url::parse(APP_URL).ok().and_then(|u| u.host_str().map(str::to_owned));
+    if app_host.as_deref() == Some(host) {
+        return true;
+    }
     IN_APP_HOST_SUFFIXES
         .iter()
         .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}")))
